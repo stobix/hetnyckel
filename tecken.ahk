@@ -3,15 +3,18 @@
 AppsKey & ä::send {Text}æ 
 AppsKey & ö::send {Text}ø
 ; uUŭŬ∪∩⊂⊆
-;AppsKey & u::send % alt(shift("∪","∩"),shift("⊂","⊆"))
+AppsKey & u::send % alt(shift("∪","∩"),shift("⊂","⊆"))
+/*
+    ; The above version has the bug that all paths are called.
+    ; This is a "Lazy" version, just to see if it's possible; Only calls shift once.
+    ; It's wordy enough not to use unless I send in functions rather than text to be evaluated.
 AppsKey & u::
 {
-    ; The above version has the bug that all paths are called.
-    ; "Lazy" version, just to see if it's possible; Only calls shift once.
     s := Func("shift")
     send % alt(s.bind("∪","∩"),s.bind("⊂","⊆"))
     return
 }
+*/
 
 
 ; eEéÉ∃∄
@@ -28,9 +31,6 @@ lul(x,y){
     MsgBox %x%.%y%
     return "s"
 }
-
-
-
 
 ; "paste without newline" on menu+v, actually modify clipboard newlines on ctrl+menu+v
 AppsKey & v:: 
@@ -50,7 +50,8 @@ AppsKey & v::
         sendinput %nonl%
 }
 
-; Return different thing depending on the state of one of the buttons
+; Return different thing depending on whether on of the two buttons are down
+; whenUp/whenDown can be a string or a function(reference)
 state2(whenUp,whenDown,lbt,rbt){
     GetKeyState, l, %lbt%
     GetKeyState, r, %rbt%
@@ -64,8 +65,8 @@ state2(whenUp,whenDown,lbt,rbt){
     ; MsgBox %a%.%ar%.%b%.%br%.%lbt%
     
     if (l="D" || r="D"){
-        ; for now: If b can be run as a function reference, and returns a value, assume that that is what we wanted and return the value. 
-        ; Otherwise assume b is a thing we want to return.
+        ; for now: If whenDown can be run as a function reference, and returns a value, assume that that is what we wanted and return the value. 
+        ; Otherwise assume whenDown is a thing we want to return.
         downVal := %whenDown%()
         return downVal?downVal:whenDown
     }
@@ -96,7 +97,7 @@ ctl(a,b) {
 
 class StateExecutive {
     stateButtons := []
-    RunState(whenUp,whenDown)
+    choose(whenUp,whenDown)
     {
         for key, val in this.stateButtons
         {
@@ -132,26 +133,32 @@ class CtrlExecutive extends StateExecutive {
     stateButtons := ["LCtrl","RCtrl"]
 }
 
-AppsKey & o::
+; Export a table in SQL Developer while hovering over its name and having the export file name in the clipboard
+AppsKey & x::
 {
-/*
-    f := Func("lul")
-    x := isFunc(f)
-    g := f.bind("a3")
-    y := isFunc(g)
-    z := "∪"
-    try {
-        a := %z%("trej")
-        b := z.("u")
-        c := z.Call("u")
-        MsgBox %x%.%y%.%f%.%g%.%a%.%b%.%c%
-    } catch e {
-        MsgBox %e%
-    }
-    return
-*/
-    a := new ShiftExecutive
-    MsgBox % a.RunState("upp","ner")
-    MsgBox % a.IsDown
+    ;a := new ShiftExecutive
+    ;MsgBox % a.choose("upp","ner")
+    ;MsgBox % a.IsDown
+    ;send {AppsKey}
+    send {Click, Right}
+    sleep 100
+    send !x ; choose export
+    WinWaitActive,Export Wizard - Steg 1 av 3,,2
+    if ErrorLevel
+        return
+    send !e ; do not export definition
+    send !i{Tab} ; get to the name field
+    ;remove the export.sql part of the name
+    send {Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace} 
+    send ^v ; paste whatever is in the clipboard
+    send !n ; go to next window or bail out
+    WinWaitActive,Export Wizard - Steg 2 av 3,,2
+    if ErrorLevel
+        return
+    send !n ; go to next window or bail out
+    WinWaitActive,Export Wizard - Steg 3 av 3,,2
+    if ErrorLevel
+        return
+    send !s ; save
     return
 }
